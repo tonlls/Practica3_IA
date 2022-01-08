@@ -145,7 +145,7 @@ def _gain(part: Data, set1: Data, set2: Data, scoref):
     return scoref(part) - p1 * scoref(set1) - p2 * scoref(set2)
 
 
-def buildtree(part: Data, scoref=gini_impurity, beta=0):
+def buildtree(part: Data, scoref=entropy, beta=0):
     """
     t9: Define a new function buildtree. This is a recursive function
     that builds a decision tree using any of the impurity measures we
@@ -187,7 +187,7 @@ def buildtree(part: Data, scoref=gini_impurity, beta=0):
         tb=buildtree(best_sets[0]), fb=buildtree(best_sets[1]))
 
 
-def iterative_buildtree(part: Data, scoref=gini_impurity, beta=0):
+def iterative_buildtree(part: Data, scoref=entropy, beta=0):
     """
     t10: Define the iterative version of the function buildtree
     """
@@ -205,7 +205,7 @@ def iterative_buildtree(part: Data, scoref=gini_impurity, beta=0):
     best_criteria = None
     best_sets = None
 
-    n_cols = len(part[0])-1   # Skip the label
+    n_cols = len(part[0]) - 1  # Skip the label
 
     for i in range(n_cols):
         possibles_cut_values = set()
@@ -225,16 +225,42 @@ def iterative_buildtree(part: Data, scoref=gini_impurity, beta=0):
 
     return DecisionNode(col=best_criteria[0], value=best_criteria[1],
         tb=iterative_buildtree(best_sets[0]), fb=iterative_buildtree(best_sets[1]))
+    # raise NotImplementedError
 
 
-def classify(tree:DecisionNode, row) -> str:
-    #classify the row according to the tree
+def classify(tree, values):
     if tree.results is not None:
-        return tree.results.most_common(1)[0][0]
+        return tree.results
     else:
-        return classify(tree.fb, row) if row[tree.col] < tree.value else classify(tree.tb, row)
+        v = values[tree.col]
+        if isinstance(v, (int, float)):
+            branch = tree.tb if v >= tree.value else tree.fb
+        else:
+            branch = tree.tb if v == tree.value else tree.fb
+        return classify(branch, values)
 
-def print_tree(tree:DecisionNode, headers=None, indent=""):
+def prune(tree: DecisionNode, threshold: float):
+    #for each leaf with the same father, check if joining them would increase the impurity below the threshold, 
+    # if so, join them and convert the father to a leaf 
+    # if not, do nothing
+    # repeat until no more leaves can be joined
+    if tree.tb.results is not None:
+        prune(tree.tb, threshold)
+    if tree.fb.results is not None:
+        prune(tree.fb, threshold)
+    if tree.tb.results is None and tree.fb.results is None:
+        tb, fb = [], []
+        for part in [tree.tb, tree.fb]:
+            for p in part.results.keys():
+                tb.append(p)
+                fb.append(part.results[p])
+        if entropy(tb) < threshold:
+            tree.tb = DecisionNode(results=unique_counts(tb))
+        if entropy(fb) < threshold:
+            tree.fb = DecisionNode(results=unique_counts(fb))
+    return tree
+
+def print_tree(tree, headers=None, indent=""):
     """
     t11: Include the following function
     """
@@ -278,10 +304,10 @@ def main():
     try:
         filename = sys.argv[1]
     except IndexError:
-        filename = "decision_tree_example.txt"
+        filename = "iris.csv"
 
     headers, data = read(filename)
-    tree = iterative_buildtree(data)
+    tree = buildtree(data)
     print_tree(tree, headers)
 
 

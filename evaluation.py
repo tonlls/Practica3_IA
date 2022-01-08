@@ -1,7 +1,9 @@
 import random
-from typing import Union, List, Tuple
+from typing import Union, List
+from treepredict import gini_impurity
+from treepredict import iterative_buildtree
 
-from treepredict import DecisionNode, buildtree, iterative_buildtree, read, classify
+from treepredict import classify, read
 
 
 def train_test_split(dataset, test_size: Union[float, int], seed=None):
@@ -23,70 +25,31 @@ def train_test_split(dataset, test_size: Union[float, int], seed=None):
 
     return train, test
 
-def get_accuracy(tree: DecisionNode, dataset):
-    # given a decision tree and a dataset, return the number of correctly classified rows
 
-        correct = 0
-        for row in dataset:
-            if classify(tree, row) == row[-1]:
-                correct += 1
-        return correct / len(dataset)
-
-
-def cross_validation(dataset, k, agg, seed, scoref, beta, threshold):
-    if seed:
-        random.seed(seed)
-    # If k is a float, use it as a percentage of the total rows
-    # Otherwise, use it directly as the number of rows in the test dataset
-    n_rows = len(dataset)
-    if float(k) != int(k):
-        k = int(n_rows * k)  # We need an integer number of rows
-    # From all the rows index, we get a sample which will be the test dataset
-    choices = list(range(n_rows))
-    test_rows = random.choices(choices, k=k)
-    # We will keep track of the scores of the different folds
-    scores = []
-    # For each fold
-    for i in range(k):
-        # We will keep track of the training and test dataset
-        train = []
-        test = []
-        # For each row in the dataset
-        for j in range(n_rows):
-            # If the row is in the test dataset for this fold
-            if j in test_rows:
-                # Add the row to the test dataset
-                test.append(dataset[j])
-            else:
-                # Add the row to the training dataset
-                train.append(dataset[j])
-        # Build the tree for the training dataset
-        tree = buildtree(train, scoref, beta, threshold)
-        # Compute the score for the current fold
-        score = agg(get_accuracy(tree, test))
-        # Add the score to the list of scores
-        scores.append(score)
-    # Return the mean of the scores
-    return mean(scores)
-
-# def get_accuracy(classifier, dataset):
-#     raise NotImplementedError
+def get_accuracy(classifier, dataset):
+    correct = 0
+    for row in dataset:
+        c=classify(classifier, row[:-1])
+        if c == row[-1]:
+            correct += 1
+    return correct / len(dataset)
 
 
 def mean(values: List[float]):
     return sum(values) / len(values)
 
-if __name__ == '__main__':
-    # Read the dataset
-    headers, data = read("blogdata.txt")
 
-    # Split the dataset into training and test sets
-    train, test = train_test_split(data, int(len(data)/2))
+def cross_validation(dataset, k, agg, seed, scoref, beta, threshold):
+    folds = train_test_split(dataset, test_size=1 / k, seed=seed)
+    scores = []
+    for fold in folds:
+        train = [row for row in folds if row != fold]
+        classifier = iterative_buildtree(train)
+        score = scoref(classifier, fold)
+        scores.append(score)
+    return scores
 
-    # Train the tree
-    print(train)
-    tree = iterative_buildtree(train)
-    tree.print()
-    # Compute the training accuracy
-    train_accuracy = get_accuracy(tree, train)
-    print("Training accuracy:", train_accuracy)
+h,dataset=read('iris.csv')
+# train,test=train_test_split(dataset, 0.5)
+# print(get_accuracy(iterative_buildtree(train), test))
+print(cross_validation(dataset, 5, gini_impurity, None, gini_impurity, 0.5, 0.5))

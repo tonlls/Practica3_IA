@@ -21,8 +21,7 @@ def readfile(filename: str) -> Tuple[List, List, List]:
 # .........DISTANCES........
 # They are normalized between 0 and 1, where 1 means two vectors are identical
 def euclidean(v1, v2):
-    distance = 0  # TODO
-    return 1 / (1+distance)
+    return sqrt(sum([(v1[i] - v2[i])**2 for i in range(len(v1))]))
 
 def euclidean_squared(v1, v2):
     return euclidean(v1, v2)**2
@@ -107,7 +106,37 @@ def printclust(clust: BiCluster, labels=None, n=0):
 
 
 # ......... K-MEANS ..........
-def kcluster(rows, distance, k=4):
-    # TODO
-    raise NotImplementedError
+def kcluster(rows, distance, k=4, num_iterations=20):
+    #return a tuple containing (the centroids found, the sum of the distances of each point to its centroid)
+    # Initialize k randomly placed centroids
+    centroids = [r[:] for r in rows[:k]]
+    lastmatches = None
+    for t in range(num_iterations):
+        print(f"Iteration {t}")
+        # Create a list of clusters
+        clusters = [list() for _ in range(k)]
+        # Each point is added to the closest cluster
+        for row in rows:
+            # Find which cluster the point belongs to
+            minidx = min([(i, distance(row, c)) for i, c in enumerate(centroids)], key=lambda t: t[1])[0]
+            # Add the point to that cluster
+            clusters[minidx].append(row)
+        # Calculate the new centroids
+        for i in range(k):
+            centroids[i] = [mean(x) for x in zip(*clusters[i])]
+        # If the results are the same as last time, this is complete
+        if lastmatches == clusters:
+            break
+        lastmatches = clusters
+    return centroids, clusters
 
+def mean(values: List[float]):
+    return sum(values) / len(values)
+
+if __name__ == "__main__":
+    # Read the data
+    row_names, headers, data = readfile("iris.csv")
+    # Cluster the data
+    clust = hcluster(data)
+    # Print the clusters
+    printclust(clust, labels=row_names)
