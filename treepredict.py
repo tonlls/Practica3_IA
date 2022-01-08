@@ -96,7 +96,7 @@ def _split_numeric(prototype: List, column: int, value: int):
 
 
 def _split_categorical(prototype: List, column: int, value: int):
-    raise NotImplementedError
+    return prototype[column] == value
 
 
 def divideset(part: Data, column: int, value: int) -> Tuple[Data, Data]:
@@ -108,7 +108,14 @@ def divideset(part: Data, column: int, value: int) -> Tuple[Data, Data]:
         split_function = _split_numeric
     else:
         split_function = _split_categorical
-    #...
+    
+    set1 = list()
+    set2 = list()
+    for row in part:
+        if split_function(row, column, value):
+            set1.append(row)
+        else:
+            set2.append(row)
     return (set1, set2)
 
 
@@ -158,7 +165,7 @@ def buildtree(part: Data, scoref=entropy, beta=0):
     best_criteria = None
     best_sets = None
 
-    n_cols = len(part[0]) - 1  # Skip the label
+    n_cols = len(part[0])   # Skip the label
 
     for i in range(n_cols):
         possibles_cut_values = set()
@@ -297,7 +304,7 @@ def main():
     try:
         filename = sys.argv[1]
     except IndexError:
-        filename = "blogdata.txt"
+        filename = "iris.csv"
 
     headers, data = read(filename)
     tree = buildtree(data)

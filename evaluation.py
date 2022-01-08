@@ -1,7 +1,7 @@
 import random
-from typing import Union, List
+from typing import Union, List, Tuple
 
-from treepredict import DecisionNode, buildtree
+from treepredict import DecisionNode, buildtree, iterative_buildtree, read, classify
 
 
 def train_test_split(dataset, test_size: Union[float, int], seed=None):
@@ -25,12 +25,13 @@ def train_test_split(dataset, test_size: Union[float, int], seed=None):
 
 def get_accuracy(tree: DecisionNode, dataset):
     # given a decision tree and a dataset, return the number of correctly classified rows
-    correct = 0
-    for row in dataset:
-        prediction = tree.predict(row)
-        if prediction == row[-1]:
-            correct += 1
-    return correct / len(dataset)
+
+        correct = 0
+        for row in dataset:
+            if classify(tree, row) == row[-1]:
+                correct += 1
+        return correct / len(dataset)
+
 
 def cross_validation(dataset, k, agg, seed, scoref, beta, threshold):
     if seed:
@@ -74,3 +75,18 @@ def cross_validation(dataset, k, agg, seed, scoref, beta, threshold):
 
 def mean(values: List[float]):
     return sum(values) / len(values)
+
+if __name__ == '__main__':
+    # Read the dataset
+    headers, data = read("blogdata.txt")
+
+    # Split the dataset into training and test sets
+    train, test = train_test_split(data, int(len(data)/2))
+
+    # Train the tree
+    print(train)
+    tree = iterative_buildtree(train)
+    tree.print()
+    # Compute the training accuracy
+    train_accuracy = get_accuracy(tree, train)
+    print("Training accuracy:", train_accuracy)
